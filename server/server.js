@@ -3,7 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const StudentModel = require("./db/student.model");
 const swaggerUi = require("swagger-ui-express");
-const swaggerJsdoc = require("swagger-jsdoc");
+const swaggerSpec = require("./swagger/swagger");
 
 const { MONGO_URL, PORT = 8080 } = process.env;
 
@@ -15,104 +15,6 @@ if (!MONGO_URL) {
 const app = express();
 app.use(express.json());
 app.use(express.static("dist"));
-
-const swaggerOptions = {
-  definition: {
-    openapi: "3.1.0",
-    info: {
-      title: "Student API",
-      version: "1.0.0",
-      description: "API for managing students",
-    },
-    servers: [
-      {
-        url: "http://localhost:8080",
-      },
-    ],
-    components: {
-      schemas: {
-        StudentCreate: {
-          type: "object",
-          required: ["name"],
-          properties: {
-            name: {
-              type: "string"
-            },
-            studyDay: {
-              type: "array",
-              items: {
-                type: "string"
-              }
-            },
-            budget: {
-              type: "number"
-            },
-          }
-        },
-
-        StudentUpdate: {
-          type: "object",
-          properties: {
-            name: {
-              type: "string"
-            },
-            studyDay: {
-              type: "array",
-              items: {
-                type: "string"
-              }
-            },
-            budget: {
-              type: "number"
-            },
-            balance: {
-              type: "number"
-            },
-            payments: {
-              type: "array",
-              items: {}
-            }
-          }
-        },
-
-        StudentResponse: {
-          type: "object",
-          properties: {
-            _id: {
-              type: "string"
-            },
-            name: {
-              type: "string"
-            },
-            studyDay: {
-              type: "array",
-              items: {
-                type: "string"
-              }
-            },
-            budget: {
-              type: "number"
-            },
-            balance: {
-              type: "number"
-            },
-            payments: {
-              type: "array",
-              items: {}
-            },
-            created: {
-              type: "string",
-              format: "date-time"
-            }
-          }
-        }
-      }
-    },
-  },
-  apis: ["./server.js"],
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -193,6 +95,8 @@ app.get("/api/students", async (req, res, next) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/StudentResponse'
+ *       404:
+ *         description: Student not found
  */
 app.get("/api/students/:id", async (req, res, next) => {
   try {
@@ -228,7 +132,7 @@ app.get("/api/students/:id", async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/StudentResponse'
  */
-app.post("/api/students/", async (req, res, next) => {
+app.post("/api/students", async (req, res, next) => {
   const student = req.body;
 
   try {
@@ -264,6 +168,8 @@ app.post("/api/students/", async (req, res, next) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/StudentResponse'
+ *       404:
+ *         description: Student not found
  */
 app.patch("/api/students/:id", async (req, res, next) => {
   try {
@@ -272,6 +178,11 @@ app.patch("/api/students/:id", async (req, res, next) => {
       { $set: { ...req.body } },
       { new: true }
     );
+    if (!student) {
+      return res.status(404).json({
+        message: "Student not found",
+      });
+    }
     return res.json(student);
   } catch (err) {
     return next(err);
